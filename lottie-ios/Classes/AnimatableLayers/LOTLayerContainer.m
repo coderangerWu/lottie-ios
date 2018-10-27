@@ -29,9 +29,9 @@
   LOTRenderGroup *_contentsGroup;
   LOTMaskContainer *_maskLayer;
 
-  AVPlayer* _player;
-  CIContext* _ciContext;
-  AVPlayerItemVideoOutput* _videoOutput;
+  AVPlayer *_player;
+  CIContext *_ciContext;
+  AVPlayerItemVideoOutput *_videoOutput;
 }
 
 @dynamic currentFrame;
@@ -294,7 +294,6 @@
   if (hidden) {
     return;
   }
-    
 
   if (_player && _videoOutput) {
       CGFloat duration = CMTimeGetSeconds(_player.currentItem.asset.duration);

@@ -22,24 +22,14 @@ For the first time, designers can create and ship beautiful animations without a
   s.author           = { 'Brandon Withrow' => 'buba447@gmail.com' }
   s.source           = { :git => 'https://github.com/airbnb/lottie-ios.git', :tag => s.version.to_s }
 
-  s.ios.deployment_target = '8.0'
-  s.osx.deployment_target = '10.10'
-  s.tvos.deployment_target = '9.0'
+  s.platform      = :ios, "8.0"
 
   s.source_files = 'lottie-ios/Classes/**/*'
-  s.osx.exclude_files = ['lottie-ios/Classes/PublicHeaders/LOTAnimationTransitionController.h',
-                         'lottie-ios/Classes/Private/LOTAnimationTransitionController.m',
-                          'lottie-ios/Classes/PublicHeaders/LOTCacheProvider.h',
-                          'lottie-ios/Classes/Private/LOTCacheProvider.m',
-                          'lottie-ios/Classes/PublicHeaders/LOTAnimatedSwitch.h',
-                          'lottie-ios/Classes/Private/LOTAnimatedSwitch.m',
-                          'lottie-ios/Classes/PublicHeaders/LOTAnimatedControl.h',
-                          'lottie-ios/Classes/Private/LOTAnimatedControl.m']
+
   # s.resource_bundles = {
   #   'lottie-ios' => ['lottie-ios/Assets/*.png']
   # }
 
-  s.public_header_files = 'lottie-ios/Classes/PublicHeaders/*.h'
   s.ios.frameworks = 'UIKit'
   s.osx.frameworks = ['AppKit', 'CoreVideo']
   s.module_name = 'Lottie'

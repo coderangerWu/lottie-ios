@@ -14,6 +14,7 @@
 #import "LOTHelpers.h"
 #import "LOTMaskContainer.h"
 #import "LOTAsset.h"
+#import <AVFoundation/AVFoundation.h>
 
 #if TARGET_OS_IPHONE || TARGET_OS_SIMULATOR
 #import "LOTCacheProvider.h"
@@ -27,6 +28,10 @@
   CALayer *DEBUG_Center;
   LOTRenderGroup *_contentsGroup;
   LOTMaskContainer *_maskLayer;
+
+  AVPlayer* _player;
+  CIContext* _ciContext;
+  AVPlayerItemVideoOutput* _videoOutput;
 }
 
 @dynamic currentFrame;
@@ -35,7 +40,11 @@
                  inLayerGroup:(LOTLayerGroup *)layerGroup {
   self = [super init];
   if (self) {
+    self.backgroundColor = [UIColor clearColor].CGColor;
+      
     _wrapperLayer = [CALayer new];
+    _wrapperLayer.contentsGravity = kCAGravityResizeAspect;
+      
     [self addSublayer:_wrapperLayer];
     DEBUG_Center = [CALayer layer];
     
@@ -140,46 +149,73 @@
 #if TARGET_OS_IPHONE || TARGET_OS_SIMULATOR
 
 - (void)_setImageForAsset:(LOTAsset *)asset {
-  if (asset.imageName) {
-    UIImage *image;
-    if ([asset.imageName hasPrefix:@"data:"]) {
-      // Contents look like a data: URL. Ignore asset.imageDirectory and simply load the image directly.
-      NSURL *imageUrl = [NSURL URLWithString:asset.imageName];
-      NSData *imageData = [NSData dataWithContentsOfURL:imageUrl];
-      image = [UIImage imageWithData:imageData];
-    } else if (asset.rootDirectory.length > 0) {
-      NSString *rootDirectory  = asset.rootDirectory;
-      if (asset.imageDirectory.length > 0) {
-        rootDirectory = [rootDirectory stringByAppendingPathComponent:asset.imageDirectory];
-      }
-      NSString *imagePath = [rootDirectory stringByAppendingPathComponent:asset.imageName];
-        
-      id<LOTImageCache> imageCache = [LOTCacheProvider imageCache];
-      if (imageCache) {
-        image = [imageCache imageForKey:imagePath];
-        if (!image) {
-          image = [UIImage imageWithContentsOfFile:imagePath];
-          [imageCache setImage:image forKey:imagePath];
+    UIImage *image = nil;
+    AVAsset* video = nil;
+    if (asset.assetImage) {
+        image = asset.assetImage;
+    } else if (asset.assetVideo) {
+        video = asset.assetVideo;
+    } else if (asset.imageName && asset.imageName.length>0) {
+        if (asset.rootDirectory.length > 0) {
+            NSString *rootDirectory  = asset.rootDirectory;
+            if (asset.imageDirectory.length > 0) {
+                rootDirectory = [rootDirectory stringByAppendingPathComponent:asset.imageDirectory];
+            }
+            NSString *imagePath = [rootDirectory stringByAppendingPathComponent:asset.imageName];
+            
+            id<LOTImageCache> imageCache = [LOTCacheProvider imageCache];
+            if (imageCache) {
+                image = [imageCache imageForKey:imagePath];
+                if (!image) {
+                    image = [UIImage imageWithContentsOfFile:imagePath];
+                    [imageCache setImage:image forKey:imagePath];
+                }
+            } else {
+                image = [UIImage imageWithContentsOfFile:imagePath];
+            }
+        } else {
+            NSString *imagePath = [asset.assetBundle pathForResource:asset.imageName ofType:nil];
+            image = [UIImage imageWithContentsOfFile:imagePath];
+            if(!image) {
+                image = [UIImage imageNamed:asset.imageName inBundle: asset.assetBundle compatibleWithTraitCollection:nil];
+            }
         }
-      } else {
-        image = [UIImage imageWithContentsOfFile:imagePath];
-      }
-    } else {
-        NSString *imagePath = [asset.assetBundle pathForResource:asset.imageName ofType:nil];
-        image = [UIImage imageWithContentsOfFile:imagePath];
-    }
-
-    //try loading from asset catalogue instead if all else fails
-    if (!image) {
-      image = [UIImage imageNamed:asset.imageName inBundle: asset.assetBundle compatibleWithTraitCollection:nil];
+    } else if (asset.videoName && asset.videoName.length>0) {
+        if (asset.rootDirectory.length > 0) {
+            NSString *rootDirectory  = asset.rootDirectory;
+            if (asset.imageDirectory.length > 0) {
+                rootDirectory = [rootDirectory stringByAppendingPathComponent:asset.imageDirectory];
+            }
+            NSString *videoPath = [rootDirectory stringByAppendingPathComponent:asset.videoName];
+            NSURL *videoURL = [NSURL fileURLWithPath:videoPath];
+            video = [AVAsset assetWithURL:videoURL];
+        } else {
+            NSString *videoPath = [asset.assetBundle pathForResource:asset.videoName ofType:nil];
+            NSURL *videoURL = [NSURL fileURLWithPath:videoPath];
+            video = [AVAsset assetWithURL:videoURL];
+        }
     }
     
     if (image) {
-      _wrapperLayer.contents = (__bridge id _Nullable)(image.CGImage);
+        _wrapperLayer.contentsGravity = kCAGravityResizeAspect;
+        _wrapperLayer.contents = (__bridge id _Nullable)(image.CGImage);
+    } else if (video) {
+        AVPlayerItem* item = [AVPlayerItem playerItemWithAsset:video];
+        _player = [AVPlayer playerWithPlayerItem:item];
+        
+        NSDictionary *pixBuffAttributes = @{(id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)};
+        _videoOutput = [[AVPlayerItemVideoOutput alloc] initWithPixelBufferAttributes:pixBuffAttributes];
+        [item addOutput:_videoOutput];
+        
+        _ciContext = [CIContext contextWithOptions:nil];
     } else {
-      NSLog(@"%s: Warn: image not found: %@", __PRETTY_FUNCTION__, asset.imageName);
+        
+        _player = nil;
+        _videoOutput = nil;
+        _ciContext = nil;
+        
+        NSLog(@"%s: Warn: asset not found: %@", __PRETTY_FUNCTION__, asset.imageName?:asset.videoName);
     }
-  }
 }
 
 #else
@@ -258,6 +294,33 @@
   if (hidden) {
     return;
   }
+    
+
+  if (_player && _videoOutput) {
+      CGFloat duration = CMTimeGetSeconds(_player.currentItem.asset.duration);
+      CGFloat progress = (frame.floatValue-_inFrame.floatValue)/(_outFrame.floatValue - _inFrame.floatValue);
+      CGFloat time = duration*progress;
+      
+      CMTime cmTime = CMTimeMakeWithSeconds(time, _player.currentItem.asset.duration.timescale);
+      [_player seekToTime:cmTime toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
+      
+      if ([_videoOutput hasNewPixelBufferForItemTime:cmTime]) {
+          CMTime time;
+          CVPixelBufferRef pixelBuffer = [_videoOutput copyPixelBufferForItemTime:cmTime itemTimeForDisplay:&time];
+          if (pixelBuffer != nil) {
+              
+              CVPixelBufferLockBaseAddress(pixelBuffer, 0);
+              CIImage *ciImage = [CIImage imageWithCVPixelBuffer:pixelBuffer];
+              CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+              CGImageRef videoImage = [_ciContext createCGImage:ciImage fromRect:CGRectMake(0, 0, CVPixelBufferGetWidth(pixelBuffer), CVPixelBufferGetHeight(pixelBuffer))];
+              if (videoImage) {
+                  _wrapperLayer.contents = (__bridge id _Nullable)(videoImage);
+                  CFRelease(videoImage);
+              }
+          }
+      }
+  }
+  
   if (_opacityInterpolator && [_opacityInterpolator hasUpdateForFrame:newFrame]) {
     self.opacity = [_opacityInterpolator floatValueForFrame:newFrame];
   }

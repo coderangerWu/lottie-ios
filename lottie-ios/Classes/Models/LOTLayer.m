@@ -66,6 +66,9 @@
     _imageAsset = [assetGroup assetModelForID:_referenceID];
     _layerWidth = [_imageAsset.assetWidth copy];
     _layerHeight = [_imageAsset.assetHeight copy];
+    _allowImage = [jsonDictionary[@"allowImage"] boolValue];
+    _allowVideo = [jsonDictionary[@"allowVideo"] boolValue];
+    _freeze = [jsonDictionary[@"freeze"] boolValue];
   } else if (_layerType == LOTLayerTypeSolid) {
     _layerWidth = jsonDictionary[@"sw"];
     _layerHeight = jsonDictionary[@"sh"];

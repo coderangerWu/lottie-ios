@@ -71,6 +71,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, readonly) LOTMatteType matteType;
 
+#pragma mark - Template
+@property (nonatomic, readonly) BOOL allowImage;
+@property (nonatomic, readonly) BOOL allowVideo;
+@property (nonatomic, readonly) BOOL freeze;
+
+
 @end
 
 NS_ASSUME_NONNULL_END

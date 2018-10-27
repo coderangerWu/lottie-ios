@@ -96,6 +96,29 @@
   return self;
 }
 
+#pragma mark - External Methods
+- (NSArray<LOTAsset *> *)allMutableAssets {
+    
+    NSArray* layers = [[self.layerGroup layers] sortedArrayUsingComparator:^NSComparisonResult(LOTLayer*  _Nonnull obj1, LOTLayer*  _Nonnull obj2) {
+        return [obj1.inFrame compare:obj2.inFrame];
+    }];
+    
+    NSMutableArray* assets = [NSMutableArray array];
+    for (LOTLayer* layer in layers) {
+        if (layer.imageAsset &&
+            layer.layerType == LOTLayerTypeImage &&
+            (layer.allowImage || layer.allowVideo) &&
+            !layer.freeze) {
+            if (![assets containsObject:layer.imageAsset]) {
+                [assets addObject:layer.imageAsset];
+            }
+        }
+    }
+    
+    return assets;
+}
+
+
 #pragma mark - Internal Methods
 
 - (void)_mapFromJSON:(NSDictionary *)jsonDictionary

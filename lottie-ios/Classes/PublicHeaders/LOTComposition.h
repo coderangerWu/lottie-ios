@@ -12,6 +12,7 @@
 @class LOTLayerGroup;
 @class LOTLayer;
 @class LOTAssetGroup;
+@class LOTAsset;
 
 @interface LOTComposition : NSObject
 
@@ -46,4 +47,5 @@
 @property (nonatomic, strong, readonly, nullable) NSBundle *assetBundle;
 @property (nonatomic, copy, nullable) NSString *cacheKey;
 
+- (NSArray <LOTAsset*>*)allMutableAssets;
 @end

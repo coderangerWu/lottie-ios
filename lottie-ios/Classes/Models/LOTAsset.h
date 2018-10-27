@@ -8,6 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <AVFoundation/AVFoundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -33,6 +34,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, readwrite) NSString *rootDirectory;
 @property (nonatomic, readonly) NSBundle *assetBundle;
+
+#pragma mark - Template
+@property (nonatomic, readonly, nullable) NSString *videoName;
+- (UIImage*)defaultImage;
+@property (nonatomic, strong) UIImage* thumbnail;
+@property (nonatomic, strong) UIImage* assetImage;
+@property (nonatomic, strong) AVAsset* assetVideo;
+@property (nonatomic, readwrite) BOOL immutable;
+
 @end
 
 NS_ASSUME_NONNULL_END
